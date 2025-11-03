@@ -8,6 +8,14 @@ if (process.env.NODE_ENV !== "test") {
   redisClient.on("error", (err) => console.error("Redis Client Error", err));
   redisClient.on("connect", () => console.log("Redis connected"));
   redisClient.connect();
+} else {
+  // Mock Redis client for testing
+  redisClient = {
+    get: async () => null,
+    setEx: async () => true,
+    del: async () => true,
+    flushall: async () => true,
+  };
 }
 
 module.exports = redisClient;
