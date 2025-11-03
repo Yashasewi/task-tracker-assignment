@@ -10,11 +10,11 @@ const auth = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded.userId;
-    console.log("JWT verified for user:", decoded.userId);
+    // console.log("JWT verified for user:", decoded.userId);
     next();
   } catch (error) {
     console.error("JWT verification failed:", error.message);
-    console.log("Invalid token received:", token);
+    // console.log("Invalid token received:", token);
     res.status(401).json({ message: "Token is not valid" });
   }
 };

@@ -18,20 +18,17 @@ router.get("/", auth, async (req, res) => {
 
     // Check cache first
     const cachedTasks = await redisClient.get(cacheKey);
-    console.log("Cache hit:", !!cachedTasks);
+    // console.log("Cache hit:", !!cachedTasks);
     if (cachedTasks) {
-      console.log("Tasks fetched from cache for user:", userId);
       return res.json(JSON.parse(cachedTasks));
     }
 
     // Fetch from DB
     const tasks = await Task.find({ owner: userId }).sort({ createdAt: -1 });
-    console.log("Tasks fetched from DB for user:", userId, "Count:", tasks.length);
     res.json(tasks);
 
     // Cache the result
     await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(tasks)); // Cache for configured TTL
-    console.log("Cache set for key:", cacheKey);
   } catch (error) {
     console.error("Error fetching tasks:", error);
     res.status(500).json({ message: "Server error while fetching tasks" });
@@ -53,11 +50,9 @@ router.post("/", auth, async (req, res) => {
       owner: req.user,
     });
     await task.save();
-    console.log("Task created:", task._id, "for user:", req.user);
 
     // Invalidate cache
     await redisClient.del(getCacheKey(req.user));
-    console.log("Cache invalidated for key:", getCacheKey(req.user));
 
     res.status(201).json(task);
   } catch (error) {
@@ -90,11 +85,10 @@ router.put("/:id", auth, async (req, res) => {
     if (!task) {
       return res.status(404).json({ message: "Task not found or you don't have permission to update it" });
     }
-    console.log("Task updated:", task._id, "for user:", req.user);
 
     // Invalidate cache
     await redisClient.del(getCacheKey(req.user));
-    console.log("Cache invalidated for key:", getCacheKey(req.user));
+    // console.log("Cache invalidated for key:", getCacheKey(req.user));
 
     res.json(task);
   } catch (error) {
@@ -125,7 +119,6 @@ router.delete("/:id", auth, async (req, res) => {
     if (!task) {
       return res.status(404).json({ message: "Task not found or you don't have permission to delete it" });
     }
-    console.log("Task deleted:", task._id, "for user:", req.user);
 
     // Invalidate cache
     await redisClient.del(getCacheKey(req.user));
