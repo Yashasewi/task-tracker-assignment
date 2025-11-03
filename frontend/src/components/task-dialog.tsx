@@ -24,7 +24,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { api, type Task } from "@/lib/api";
+import { api } from "@/lib/api";
+import type { Task } from "@/types";
 
 const taskSchema = z.object({
     title: z.string().min(1, "Title is required"),

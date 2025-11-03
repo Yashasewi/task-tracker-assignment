@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle, Circle } from "lucide-react";
+import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +11,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import type { Task } from "@/lib/api";
+import type { Task } from "@/types";
 
 interface TaskCardProps {
     task: Task;
@@ -18,7 +19,11 @@ interface TaskCardProps {
     onToggleStatus: (task: Task) => void;
 }
 
-export function TaskCard({ task, onEdit, onToggleStatus }: TaskCardProps) {
+export const TaskCard = React.memo(function TaskCard({
+    task,
+    onEdit,
+    onToggleStatus,
+}: TaskCardProps) {
     return (
         <Card
             className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300 hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
@@ -72,4 +77,4 @@ export function TaskCard({ task, onEdit, onToggleStatus }: TaskCardProps) {
             )}
         </Card>
     );
-}
+});
