@@ -1,13 +1,5 @@
 import axios from "axios";
-
-export interface Task {
-    _id: string;
-    title: string;
-    description: string;
-    status: "pending" | "completed";
-    dueDate?: string;
-    createdAt: string;
-}
+import type { Task } from "@/types";
 
 export const api = {
     tasks: {
