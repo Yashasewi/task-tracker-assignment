@@ -3,25 +3,6 @@
 A full-stack task management application built with Node.js backend and Next.js frontend, featuring user authentication, task CRUD operations, and Redis caching.
 For detailed task read the [TASK.md](TASK.md) file.
 
-## Tech Stack
-
-### Backend
-- **Node.js** with Express.js
-- **MongoDB** with Mongoose ODM
-- **Redis** for caching
-- **JWT** for authentication
-- **bcryptjs** for password hashing
-- **Jest** for testing
-
-### Frontend
-- **Next.js 16** with React 19
-- **TypeScript**
-- **Tailwind CSS** for styling
-- **ShadCn UI** components
-- **React Hook Form** with Zod validation
-- **Axios** for API calls
-
-
 ## Setup Instructions
 
 ### Prerequisites
