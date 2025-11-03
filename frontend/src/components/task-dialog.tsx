@@ -1,11 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
 	Dialog,
 	DialogContent,
@@ -17,6 +20,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -25,13 +33,14 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import type { Task } from "@/types";
 
 const taskSchema = z.object({
 	title: z.string().min(1, "Title is required"),
 	description: z.string().optional(),
 	status: z.enum(["pending", "completed"]),
-	dueDate: z.string().optional(),
+	dueDate: z.date().optional(),
 });
 
 type TaskForm = z.infer<typeof taskSchema>;
@@ -65,7 +74,7 @@ export function TaskDialog({
 			title: "",
 			description: "",
 			status: "pending",
-			dueDate: "",
+			dueDate: undefined,
 		},
 	});
 
@@ -76,7 +85,7 @@ export function TaskDialog({
 				title: "",
 				description: "",
 				status: "pending",
-				dueDate: "",
+				dueDate: undefined,
 			});
 		} else if (task) {
 			// Populate form when editing an existing task
@@ -84,9 +93,7 @@ export function TaskDialog({
 				title: task.title,
 				description: task.description || "",
 				status: task.status,
-				dueDate: task.dueDate
-					? new Date(task.dueDate).toISOString().split("T")[0]
-					: "",
+				dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
 			});
 		}
 	}, [task, reset, open]);
@@ -96,7 +103,9 @@ export function TaskDialog({
 			if (isEditing && task) {
 				const updatedTask = await api.tasks.update(task._id, {
 					...data,
-					dueDate: data.dueDate || undefined,
+					dueDate: data.dueDate
+						? data.dueDate.toISOString().split("T")[0]
+						: undefined,
 				});
 				toast.success("Task updated successfully!");
 				onSaved(updatedTask);
@@ -105,7 +114,9 @@ export function TaskDialog({
 					title: data.title,
 					description: data.description || "",
 					status: data.status,
-					dueDate: data.dueDate || undefined,
+					dueDate: data.dueDate
+						? data.dueDate.toISOString().split("T")[0]
+						: undefined,
 				});
 				toast.success("Task created successfully!");
 				onSaved(newTask);
@@ -182,12 +193,32 @@ export function TaskDialog({
 
 					<div className="space-y-2">
 						<Label htmlFor="dueDate">Due Date</Label>
-						<Input
-							id="dueDate"
-							type="date"
-							{...register("dueDate")}
-							className="transition-all duration-200 focus:scale-[1.02]"
-						/>
+						<Popover>
+							<PopoverTrigger asChild>
+								<Button
+									variant={"outline"}
+									className={cn(
+										"w-full justify-start text-left font-normal",
+										!watch("dueDate") && "text-muted-foreground",
+									)}
+								>
+									<CalendarIcon className="mr-2 h-4 w-4" />
+									{watch("dueDate") ? (
+										format(watch("dueDate") as Date, "PPP")
+									) : (
+										<span>Pick a date</span>
+									)}
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent className="w-auto p-0">
+								<Calendar
+									mode="single"
+									selected={watch("dueDate")}
+									onSelect={(date) => setValue("dueDate", date)}
+									initialFocus
+								/>
+							</PopoverContent>
+						</Popover>
 					</div>
 
 					<DialogFooter className="gap-2">
