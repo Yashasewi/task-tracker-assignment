@@ -2,6 +2,7 @@ const express = require("express");
 const Task = require("../models/Task");
 const auth = require("../middleware/auth");
 const redisClient = require("../config/redis");
+const { CACHE_TTL } = require("../config/constants");
 
 const router = express.Router();
 
@@ -28,7 +29,7 @@ router.get("/", auth, async (req, res) => {
     res.json(tasks);
 
     // Cache the result
-    await redisClient.setEx(cacheKey, 3600, JSON.stringify(tasks)); // Cache for 1 hour
+    await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(tasks)); // Cache for configured TTL
     console.log("Cache set for key:", cacheKey);
   } catch (error) {
     console.error("Error fetching tasks:", error);

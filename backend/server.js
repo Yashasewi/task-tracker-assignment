@@ -2,12 +2,13 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 
+// Load environment variables FIRST before any other imports
+dotenv.config();
+
 const connectDB = require("./config/database");
 const authRoutes = require("./routes/auth");
 const taskRoutes = require("./routes/tasks");
-
-// Load environment variables
-dotenv.config();
+const { PORT } = require("./config/constants");
 
 const app = express();
 
@@ -36,7 +37,6 @@ app.use((err, req, res, next) => {
   res.status(500).send("Something broke!");
 });
 
-const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
