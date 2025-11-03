@@ -1,6 +1,7 @@
 "use client";
 
 import axios from "axios";
+import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 
 interface User {
@@ -22,21 +23,64 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter();
+
+    // Logout function that clears everything
+    const logout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        delete axios.defaults.headers.common["Authorization"];
+        setUser(null);
+        router.push("/login");
+    };
 
     useEffect(() => {
+        // Setup axios interceptor for handling 401 errors
+        const interceptor = axios.interceptors.response.use(
+            (response) => response,
+            (error) => {
+                // If we get a 401 error, token is invalid/expired
+                if (error.response?.status === 401) {
+                    console.log("Token expired or invalid, logging out...");
+                    logout();
+                }
+                return Promise.reject(error);
+            }
+        );
+
         // Check for stored token on mount
         const token = localStorage.getItem("token");
         if (token) {
-            // Verify token with backend
             axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-            // For now, assume token is valid if exists
-            // In production, you'd verify with backend
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-                setUser(JSON.parse(storedUser));
-            }
+            
+            // Verify token with backend
+            axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/verify`, { token })
+                .then((response) => {
+                    if (response.data.valid) {
+                        const storedUser = localStorage.getItem("user");
+                        if (storedUser) {
+                            setUser(JSON.parse(storedUser));
+                        }
+                    } else {
+                        // Token is invalid, clean up
+                        logout();
+                    }
+                })
+                .catch(() => {
+                    // Error verifying token, clean up
+                    logout();
+                })
+                .finally(() => {
+                    setIsLoading(false);
+                });
+        } else {
+            setIsLoading(false);
         }
-        setIsLoading(false);
+
+        // Cleanup interceptor on unmount
+        return () => {
+            axios.interceptors.response.eject(interceptor);
+        };
     }, []);
 
     const login = async (email: string, password: string) => {
@@ -76,13 +120,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (_error) {
             throw new Error("Signup failed");
         }
-    };
-
-    const logout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        delete axios.defaults.headers.common["Authorization"];
-        setUser(null);
     };
 
     return (
