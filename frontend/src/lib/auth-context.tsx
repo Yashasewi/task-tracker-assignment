@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { AuthContextType, User } from "@/types";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const API_ENDPOINT = process.env.NEXT_PUBLIC_API_URL;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Verify token with backend
             axios
-                .post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/verify`, {
+                .post(`${API_ENDPOINT}/api/auth/verify`, {
                     token,
                 })
                 .then((response) => {
@@ -76,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const login = async (email: string, password: string) => {
         try {
             const response = await axios.post(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
+                `${API_ENDPOINT}/api/auth/login`,
                 {
                     email,
                     password,
@@ -95,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const signup = async (name: string, email: string, password: string) => {
         try {
             const response = await axios.post(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/auth/signup`,
+                `${API_ENDPOINT}/api/auth/signup`,
                 {
                     name,
                     email,

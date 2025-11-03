@@ -1,12 +1,12 @@
 import axios from "axios";
 import type { Task } from "@/types";
 
+const API_ENDPOINT = process.env.NEXT_PUBLIC_API_URL;
+
 export const api = {
     tasks: {
         getAll: async (): Promise<Task[]> => {
-            const response = await axios.get(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/tasks`,
-            );
+            const response = await axios.get(`${API_ENDPOINT}/api/tasks`);
             return response.data;
         },
 
@@ -14,7 +14,7 @@ export const api = {
             task: Omit<Task, "_id" | "createdAt">,
         ): Promise<Task> => {
             const response = await axios.post(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/tasks`,
+                `${API_ENDPOINT}/api/tasks`,
                 task,
             );
             return response.data;
@@ -22,16 +22,14 @@ export const api = {
 
         update: async (id: string, task: Partial<Task>): Promise<Task> => {
             const response = await axios.put(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/tasks/${id}`,
+                `${API_ENDPOINT}/api/tasks/${id}`,
                 task,
             );
             return response.data;
         },
 
         delete: async (id: string): Promise<void> => {
-            await axios.delete(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/tasks/${id}`,
-            );
+            await axios.delete(`${API_ENDPOINT}/api/tasks/${id}`);
         },
     },
 };
