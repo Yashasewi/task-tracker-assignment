@@ -1,7 +1,7 @@
 import confetti from "canvas-confetti";
 
 export const fireConfetti = () => {
-    var count = 200;
+    var count = 80;
     var defaults = {
         origin: { y: 0.7 },
     };
