@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Task = require("../models/Task");
 const auth = require("../middleware/auth");
 const redisClient = require("../config/redis");
@@ -33,7 +34,7 @@ router.get("/", auth, async (req, res) => {
     console.log("Cache set for key:", cacheKey);
   } catch (error) {
     console.error("Error fetching tasks:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error while fetching tasks" });
   }
 });
 
@@ -61,55 +62,78 @@ router.post("/", auth, async (req, res) => {
     res.status(201).json(task);
   } catch (error) {
     console.error("Error creating task:", error);
-    res.status(500).json({ message: "Server error" });
+    
+    // Handle validation errors
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ message: "Validation error", errors: messages });
+    }
+    
+    res.status(500).json({ message: "Server error while creating task" });
   }
 });
 
 // PUT /api/tasks/:id - Update a task
 router.put("/:id", auth, async (req, res) => {
   try {
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid task ID format" });
+    }
+
     const { title, description, status, dueDate } = req.body;
     const task = await Task.findOneAndUpdate(
       { _id: req.params.id, owner: req.user },
       { title, description, status, dueDate },
-      { new: true },
+      { new: true, runValidators: true },
     );
     if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({ message: "Task not found or you don't have permission to update it" });
     }
     console.log("Task updated:", task._id, "for user:", req.user);
 
     // Invalidate cache
     await redisClient.del(getCacheKey(req.user));
     console.log("Cache invalidated for key:", getCacheKey(req.user));
-    console.log("Cache invalidated for key:", getCacheKey(req.user));
 
     res.json(task);
   } catch (error) {
     console.error("Error updating task:", error);
-    res.status(500).json({ message: "Server error" });
+    
+    // Handle validation errors
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ message: "Validation error", errors: messages });
+    }
+    
+    res.status(500).json({ message: "Server error while updating task" });
   }
 });
 
 // DELETE /api/tasks/:id - Delete a task
 router.delete("/:id", auth, async (req, res) => {
   try {
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid task ID format" });
+    }
+
     const task = await Task.findOneAndDelete({
       _id: req.params.id,
       owner: req.user,
     });
     if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({ message: "Task not found or you don't have permission to delete it" });
     }
     console.log("Task deleted:", task._id, "for user:", req.user);
 
     // Invalidate cache
     await redisClient.del(getCacheKey(req.user));
 
-    res.json({ message: "Task deleted" });
+    res.json({ message: "Task deleted successfully" });
   } catch (error) {
     console.error("Error deleting task:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error while deleting task" });
   }
 });
 
