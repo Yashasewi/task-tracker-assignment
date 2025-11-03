@@ -1,15 +1,24 @@
 "use client";
 
 import { LogOut, Plus } from "lucide-react";
+import React from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth-context";
 
 interface HeaderProps {
     userName: string;
     onCreateTask: () => void;
-    onLogout: () => void;
 }
 
-export function Header({ userName, onCreateTask, onLogout }: HeaderProps) {
+export const Header = React.memo(function Header({
+    userName,
+    onCreateTask,
+}: HeaderProps) {
+    const { logout } = useAuth();
+
+    const handleLogout = () => {
+        logout();
+    };
     return (
         <header className="bg-white shadow-sm border-b">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -32,7 +41,7 @@ export function Header({ userName, onCreateTask, onLogout }: HeaderProps) {
                         </Button>
                         <Button
                             variant="outline"
-                            onClick={onLogout}
+                            onClick={handleLogout}
                             className="transition-all duration-200 hover:scale-105 active:scale-95"
                         >
                             <LogOut className="w-4 h-4 mr-2" />
@@ -43,4 +52,4 @@ export function Header({ userName, onCreateTask, onLogout }: HeaderProps) {
             </div>
         </header>
     );
-}
+});
