@@ -1,29 +1,25 @@
 "use client";
 
-import { CheckCircle, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { FilterControls } from "@/components/filter-controls";
 import { Header } from "@/components/header";
-import { TaskCard } from "@/components/task-card";
 import { TaskDialog } from "@/components/task-dialog";
-import { Button } from "@/components/ui/button";
-import { api, type Task } from "@/lib/api";
+import { TaskList } from "@/components/task-list";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { fireConfetti } from "@/lib/confetti";
+import type { DateFilter, StatusFilter, Task } from "@/types";
 
 export default function DashboardPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
-    const [statusFilter, setStatusFilter] = useState<
-        "all" | "pending" | "completed"
-    >("all");
-    const [dateFilter, setDateFilter] = useState<
-        "all" | "today" | "week" | "overdue" | "no-date"
-    >("all");
-    const { user, logout, isLoading: authLoading } = useAuth();
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+    const { user, isLoading: authLoading } = useAuth();
     const router = useRouter();
     const loadTasks = useCallback(async () => {
         try {
@@ -98,79 +94,96 @@ export default function DashboardPage() {
         }
     }, [user, authLoading, router, loadTasks]);
 
-    const handleCreateTask = () => {
+    const handleCreateTask = useCallback(() => {
         setEditingTask(null);
         setIsDialogOpen(true);
-    };
+    }, []);
 
-    const handleEditTask = (task: Task) => {
+    const handleEditTask = useCallback((task: Task) => {
         setEditingTask(task);
         setIsDialogOpen(true);
-    };
+    }, []);
 
-    const handleTaskSaved = async (savedTask: Task) => {
-        setIsDialogOpen(false);
-        if (editingTask) {
-            // Check if task was just completed
-            const wasJustCompleted =
-                editingTask.status === "pending" &&
-                savedTask.status === "completed";
+    const handleTaskSaved = useCallback(
+        async (savedTask: Task) => {
+            setIsDialogOpen(false);
+            if (editingTask) {
+                // Check if task was just completed
+                const wasJustCompleted =
+                    editingTask.status === "pending" &&
+                    savedTask.status === "completed";
 
-            // Update existing task in local state
-            setTasks(
-                tasks.map((t) => (t._id === savedTask._id ? savedTask : t)),
-            );
+                // Update existing task in local state
+                setTasks(
+                    tasks.map((t) => (t._id === savedTask._id ? savedTask : t)),
+                );
 
-            // Trigger confetti if task was just completed
-            if (wasJustCompleted) {
-                fireConfetti();
+                // Trigger confetti if task was just completed
+                if (wasJustCompleted) {
+                    fireConfetti();
+                }
+            } else {
+                // Add new task to the beginning (most recent first)
+                setTasks([savedTask, ...tasks]);
+
+                // Trigger confetti if new task is created as completed
+                if (savedTask.status === "completed") {
+                    fireConfetti();
+                }
             }
-        } else {
-            // Add new task to the beginning (most recent first)
-            setTasks([savedTask, ...tasks]);
+        },
+        [editingTask, tasks],
+    );
 
-            // Trigger confetti if new task is created as completed
-            if (savedTask.status === "completed") {
-                fireConfetti();
+    const handleToggleStatus = useCallback(
+        async (task: Task) => {
+            try {
+                const newStatus =
+                    task.status === "pending" ? "completed" : "pending";
+                await api.tasks.update(task._id, { status: newStatus });
+                setTasks(
+                    tasks.map((t) =>
+                        t._id === task._id ? { ...t, status: newStatus } : t,
+                    ),
+                );
+                toast.success(`Task marked as ${newStatus}`);
+
+                // Trigger confetti when task is completed
+                if (newStatus === "completed") {
+                    fireConfetti();
+                }
+            } catch (_error) {
+                toast.error("Failed to update task");
             }
-        }
-    };
+        },
+        [tasks],
+    );
 
-    const handleToggleStatus = async (task: Task) => {
-        try {
-            const newStatus =
-                task.status === "pending" ? "completed" : "pending";
-            await api.tasks.update(task._id, { status: newStatus });
-            setTasks(
-                tasks.map((t) =>
-                    t._id === task._id ? { ...t, status: newStatus } : t,
-                ),
-            );
-            toast.success(`Task marked as ${newStatus}`);
-
-            // Trigger confetti when task is completed
-            if (newStatus === "completed") {
-                fireConfetti();
+    const handleDeleteTask = useCallback(
+        async (taskId: string) => {
+            try {
+                await api.tasks.delete(taskId);
+                setTasks(tasks.filter((t) => t._id !== taskId));
+                toast.success("Task deleted");
+            } catch (_error) {
+                toast.error("Failed to delete task");
             }
-        } catch (_error) {
-            toast.error("Failed to update task");
-        }
-    };
+        },
+        [tasks],
+    );
 
-    const handleDeleteTask = async (taskId: string) => {
-        try {
-            await api.tasks.delete(taskId);
-            setTasks(tasks.filter((t) => t._id !== taskId));
-            toast.success("Task deleted");
-        } catch (_error) {
-            toast.error("Failed to delete task");
-        }
-    };
+    const handleStatusFilterChange = useCallback((filter: StatusFilter) => {
+        setStatusFilter(filter);
+    }, []);
 
-    const handleLogout = () => {
-        logout();
-        router.push("/login");
-    };
+    const handleDateFilterChange = useCallback((filter: DateFilter) => {
+        setDateFilter(filter);
+    }, []);
+
+    const handleClearFilters = useCallback(() => {
+        setStatusFilter("all");
+        setDateFilter("all");
+    }, []);
 
     if (authLoading || isLoading) {
         return (
@@ -186,138 +199,25 @@ export default function DashboardPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header
-                userName={user.name}
-                onCreateTask={handleCreateTask}
-                onLogout={handleLogout}
-            />
+            <Header userName={user.name} onCreateTask={handleCreateTask} />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Filter Controls */}
-                <div className="mb-6 flex flex-wrap gap-4 items-center">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-700">
-                            Status:
-                        </span>
-                        <div className="flex gap-1">
-                            {[
-                                { value: "all", label: "All" },
-                                { value: "pending", label: "Pending" },
-                                { value: "completed", label: "Completed" },
-                            ].map((option) => (
-                                <Button
-                                    key={option.value}
-                                    variant={
-                                        statusFilter === option.value
-                                            ? "default"
-                                            : "outline"
-                                    }
-                                    size="sm"
-                                    onClick={() =>
-                                        setStatusFilter(option.value as any)
-                                    }
-                                    className="transition-all duration-200"
-                                >
-                                    {option.label}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
+                <FilterControls
+                    statusFilter={statusFilter}
+                    dateFilter={dateFilter}
+                    onStatusFilterChange={handleStatusFilterChange}
+                    onDateFilterChange={handleDateFilterChange}
+                    onClearFilters={handleClearFilters}
+                />
 
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-700">
-                            Due Date:
-                        </span>
-                        <div className="flex gap-1">
-                            {[
-                                { value: "all", label: "All" },
-                                { value: "today", label: "Today" },
-                                { value: "week", label: "This Week" },
-                                { value: "overdue", label: "Overdue" },
-                                { value: "no-date", label: "No Date" },
-                            ].map((option) => (
-                                <Button
-                                    key={option.value}
-                                    variant={
-                                        dateFilter === option.value
-                                            ? "default"
-                                            : "outline"
-                                    }
-                                    size="sm"
-                                    onClick={() =>
-                                        setDateFilter(option.value as any)
-                                    }
-                                    className="transition-all duration-200"
-                                >
-                                    {option.label}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {(statusFilter !== "all" || dateFilter !== "all") && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                                setStatusFilter("all");
-                                setDateFilter("all");
-                            }}
-                            className="text-gray-500 hover:text-gray-700"
-                        >
-                            Clear Filters
-                        </Button>
-                    )}
-                </div>
-
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredTasks.map((task) => (
-                        <TaskCard
-                            key={task._id}
-                            task={task}
-                            onEdit={handleEditTask}
-                            onToggleStatus={handleToggleStatus}
-                        />
-                    ))}
-                </div>
-
-                {filteredTasks.length === 0 && (
-                    <div className="text-center py-12">
-                        <div className="animate-in fade-in-0 zoom-in-95 duration-500">
-                            <CheckCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                {tasks.length === 0
-                                    ? "No tasks yet"
-                                    : "No tasks match your filters"}
-                            </h3>
-                            <p className="text-gray-500 mb-4">
-                                {tasks.length === 0
-                                    ? "Create your first task to get started"
-                                    : "Try adjusting your filters to see more tasks"}
-                            </p>
-                            {tasks.length === 0 ? (
-                                <Button
-                                    onClick={handleCreateTask}
-                                    className="transition-all duration-200 hover:scale-105 active:scale-95"
-                                >
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    Create Task
-                                </Button>
-                            ) : (
-                                <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                        setStatusFilter("all");
-                                        setDateFilter("all");
-                                    }}
-                                    className="transition-all duration-200 hover:scale-105 active:scale-95"
-                                >
-                                    Clear Filters
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                )}
+                <TaskList
+                    tasks={tasks}
+                    filteredTasks={filteredTasks}
+                    onEditTask={handleEditTask}
+                    onToggleStatus={handleToggleStatus}
+                    onCreateTask={handleCreateTask}
+                    onClearFilters={handleClearFilters}
+                />
             </main>
 
             <TaskDialog
